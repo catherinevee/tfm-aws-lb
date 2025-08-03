@@ -15,14 +15,27 @@ A comprehensive Terraform module for creating AWS Application Load Balancers (AL
 
 | Name | Version |
 |------|---------|
-| terraform | >= 1.0 |
-| aws | ~> 5.0 |
+| terraform | ~> 1.13.0 |
+| aws | 6.2.0 |
+| terragrunt | 0.84.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | ~> 5.0 |
+| aws | 6.2.0 |
+
+## Resource Map
+
+| Resource Type | Purpose | Default Configuration |
+|--------------|---------|----------------------|
+| `aws_lb` | Main load balancer resource | Type: application/network based on var.load_balancer_type |
+| `aws_security_group` | Load balancer security group | Created if no security_group_ids provided |
+| `aws_cloudwatch_log_group` | Load balancer logs | Created if enable_cloudwatch_logs = true |
+| `aws_lb_listener` | Load balancer listeners | HTTP/HTTPS based on configuration |
+| `aws_lb_target_group` | Target groups for routing | Created based on target_groups variable |
+| `aws_lb_listener_rule` | Routing rules | Created based on listener_rules variable |
+| `aws_wafv2_web_acl_association` | WAFv2 integration | Created if enable_wafv2 = true |
 
 ## Modules
 

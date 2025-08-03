@@ -98,6 +98,31 @@ docs:
 	fi
 
 # Pre-commit hooks
+pre-commit:
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit run --all-files; \
+	else \
+		echo "pre-commit not found. Install it from https://pre-commit.com"; \
+	fi
+
+# Run tfsec (requires tfsec)
+tfsec:
+	@if command -v tfsec >/dev/null 2>&1; then \
+		tfsec .; \
+	else \
+		echo "tfsec not found. Install it from https://github.com/aquasecurity/tfsec"; \
+	fi
+
+# Run checkov (requires checkov)
+checkov:
+	@if command -v checkov >/dev/null 2>&1; then \
+		checkov -d .; \
+	else \
+		echo "checkov not found. Install it from https://github.com/bridgecrewio/checkov"; \
+	fi
+
+# Run all security checks
+security-checks: security-scan tfsec checkov
 pre-commit: fmt validate lint
 	@echo "Pre-commit checks completed successfully!"
 
