@@ -1,7 +1,6 @@
 variable "name" {
-  description = "Name of the load balancer"
+  description = "Load balancer name - used for resource naming and tagging"
   type        = string
-  # Default: none (required)
 
   validation {
     condition     = can(regex("^[a-zA-Z0-9-]+$", var.name))
@@ -10,9 +9,8 @@ variable "name" {
 }
 
 variable "environment" {
-  description = "Environment name (e.g., dev, staging, prod)"
+  description = "Environment name for resource tagging and naming conventions"
   type        = string
-  # Default: none (required)
 
   validation {
     condition     = contains(["dev", "staging", "prod", "test"], var.environment)
@@ -21,9 +19,9 @@ variable "environment" {
 }
 
 variable "load_balancer_type" {
-  description = "Type of load balancer (application or network)"
+  description = "Load balancer type - application for HTTP/HTTPS, network for TCP/UDP"
   type        = string
-  default     = "application" # Default: application
+  default     = "application"
 
   validation {
     condition     = contains(["application", "network"], var.load_balancer_type)
@@ -32,21 +30,19 @@ variable "load_balancer_type" {
 }
 
 variable "internal" {
-  description = "Whether the load balancer is internal or internet-facing"
+  description = "Set to true for internal load balancers, false for internet-facing"
   type        = bool
-  default     = false # Default: false (internet-facing)
+  default     = false
 }
 
 variable "vpc_id" {
-  description = "VPC ID where the load balancer will be created"
+  description = "VPC ID where the load balancer will be deployed"
   type        = string
-  # Default: none (required)
 }
 
 variable "subnet_ids" {
-  description = "List of subnet IDs for the load balancer"
+  description = "List of subnet IDs - minimum 2 for high availability"
   type        = list(string)
-  # Default: none (required)
 
   validation {
     condition     = length(var.subnet_ids) >= 2
@@ -55,15 +51,15 @@ variable "subnet_ids" {
 }
 
 variable "security_group_ids" {
-  description = "List of security group IDs to attach to the load balancer"
+  description = "Existing security group IDs - if empty, creates a new security group"
   type        = list(string)
-  default     = [] # Default: empty list (creates new security group)
+  default     = []
 }
 
 variable "idle_timeout" {
-  description = "The time in seconds that the connection is allowed to be idle"
+  description = "Connection idle timeout in seconds (1-4000)"
   type        = number
-  default     = 60 # Default: 60 seconds
+  default     = 60
 
   validation {
     condition     = var.idle_timeout >= 1 && var.idle_timeout <= 4000
@@ -72,21 +68,21 @@ variable "idle_timeout" {
 }
 
 variable "enable_deletion_protection" {
-  description = "If true, deletion of the load balancer will be disabled"
+  description = "Prevents accidental deletion of the load balancer"
   type        = bool
-  default     = false # Default: false (deletion allowed)
+  default     = false
 }
 
 variable "enable_cross_zone_load_balancing" {
-  description = "If true, cross-zone load balancing will be enabled"
+  description = "Distributes traffic across all AZs for better availability"
   type        = bool
-  default     = true # Default: true (enabled)
+  default     = true
 }
 
 variable "enable_http2" {
-  description = "If true, HTTP/2 will be enabled (ALB only)"
+  description = "Enables HTTP/2 protocol support (ALB only)"
   type        = bool
-  default     = true # Default: true (enabled)
+  default     = true
 }
 
 # Enhanced Load Balancer Configuration

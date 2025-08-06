@@ -1,4 +1,4 @@
-# CloudWatch Dashboard for Load Balancer
+# CloudWatch dashboard for load balancer monitoring
 resource "aws_cloudwatch_dashboard" "lb" {
   count = var.create_dashboard ? 1 : 0
 
@@ -56,7 +56,7 @@ resource "aws_cloudwatch_dashboard" "lb" {
   })
 }
 
-# CloudWatch Metric Alarms
+# CloudWatch alarms for load balancer monitoring
 resource "aws_cloudwatch_metric_alarm" "http_5xx_errors" {
   count = var.create_alarms ? 1 : 0
 
@@ -68,7 +68,7 @@ resource "aws_cloudwatch_metric_alarm" "http_5xx_errors" {
   period             = 300
   statistic          = "Sum"
   threshold          = var.error_threshold
-  alarm_description  = "This metric monitors HTTP 5XX errors"
+  alarm_description  = "Alerts when HTTP 5XX errors exceed threshold"
   alarm_actions      = var.alarm_actions
 
   dimensions = {
@@ -87,7 +87,7 @@ resource "aws_cloudwatch_metric_alarm" "target_response_time" {
   period             = 300
   statistic          = "Average"
   threshold          = var.response_time_threshold
-  alarm_description  = "This metric monitors target response time"
+  alarm_description  = "Alerts when target response time exceeds threshold"
   alarm_actions      = var.alarm_actions
 
   dimensions = {
@@ -106,7 +106,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   period             = 300
   statistic          = "Maximum"
   threshold          = var.unhealthy_host_threshold
-  alarm_description  = "This metric monitors unhealthy host count"
+  alarm_description  = "Alerts when unhealthy host count exceeds threshold"
   alarm_actions      = var.alarm_actions
 
   dimensions = {

@@ -1,6 +1,6 @@
 # AWS Load Balancer Terraform Module
 
-Terraform module for creating AWS Application Load Balancers (ALB) and Network Load Balancers (NLB) with enterprise security, monitoring, and high availability features.
+Terraform module for creating AWS Application Load Balancers (ALB) and Network Load Balancers (NLB) with security, monitoring, and high availability features.
 
 ## Features
 

@@ -1,5 +1,5 @@
 locals {
-  # Common tags for all resources
+  # Standard tags applied to all resources
   common_tags = merge(var.tags, {
     Name        = var.name
     Environment = var.environment
@@ -7,7 +7,7 @@ locals {
     Module      = "tfm-aws-lb"
   })
 
-  # Enhanced tags with compliance tagging
+  # Compliance tags for enterprise environments
   enhanced_tags = var.enable_compliance_tagging ? merge(local.common_tags, {
     DataClassification = var.compliance_tags.data_classification
     BusinessUnit       = var.compliance_tags.business_unit
@@ -17,17 +17,17 @@ locals {
     EncryptionRequired = var.compliance_tags.encryption_required
   }) : local.common_tags
 
-  # CloudWatch log group name
+  # CloudWatch log group name - uses custom name or generates from load balancer name
   log_group_name = var.cloudwatch_log_group_name != "" ? var.cloudwatch_log_group_name : "/aws/loadbalancer/${var.name}"
 
-  # Security group name
+  # Security group naming convention
   security_group_name = "${var.name}-lb-sg"
 
-  # Enhanced load balancer name with description
+  # Load balancer name with optional description suffix
   lb_name = var.load_balancer_description != "" ? "${var.name}-${var.load_balancer_description}" : var.name
 }
 
-# CloudWatch Log Group for Load Balancer logs
+# CloudWatch log group for load balancer access logs
 resource "aws_cloudwatch_log_group" "lb_logs" {
   count             = var.enable_cloudwatch_logs ? 1 : 0
   name              = local.log_group_name
@@ -37,14 +37,14 @@ resource "aws_cloudwatch_log_group" "lb_logs" {
   tags = merge(local.enhanced_tags, var.cloudwatch_log_group_tags)
 }
 
-# Security Group for Load Balancer
+# Security group for load balancer - only created if no existing security groups provided
 resource "aws_security_group" "lb" {
   count       = length(var.security_group_ids) == 0 ? 1 : 0
   name        = local.security_group_name
   description = var.security_group_description
   vpc_id      = var.vpc_id
 
-  # Allow HTTP traffic
+  # HTTP ingress for ALB only
   dynamic "ingress" {
     for_each = var.load_balancer_type == "application" ? [1] : []
     content {
@@ -57,7 +57,7 @@ resource "aws_security_group" "lb" {
     }
   }
 
-  # Allow HTTPS traffic
+  # HTTPS ingress for ALB only
   dynamic "ingress" {
     for_each = var.load_balancer_type == "application" ? [1] : []
     content {
@@ -70,7 +70,7 @@ resource "aws_security_group" "lb" {
     }
   }
 
-  # Additional ingress rules
+  # Custom ingress rules
   dynamic "ingress" {
     for_each = var.security_group_ingress_rules
     content {
@@ -84,7 +84,7 @@ resource "aws_security_group" "lb" {
     }
   }
 
-  # Allow all outbound traffic
+  # Default egress - allow all outbound traffic
   egress {
     description = "All outbound traffic"
     from_port   = 0
@@ -93,7 +93,7 @@ resource "aws_security_group" "lb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Additional egress rules
+  # Custom egress rules
   dynamic "egress" {
     for_each = var.security_group_egress_rules
     content {
@@ -114,7 +114,7 @@ resource "aws_security_group" "lb" {
   }
 }
 
-# Application Load Balancer
+# Main load balancer resource
 resource "aws_lb" "main" {
   name               = local.lb_name
   internal           = var.internal
@@ -127,11 +127,11 @@ resource "aws_lb" "main" {
   enable_http2                     = var.load_balancer_type == "application" ? var.enable_http2 : null
   idle_timeout                     = var.idle_timeout
 
-  # Enhanced load balancer attributes
+  # Advanced load balancer settings
   customer_owned_ipv4_pool = var.customer_owned_ipv4_pool != "" ? var.customer_owned_ipv4_pool : null
   desync_mitigation_mode   = var.desync_mitigation_mode
 
-  # Access logs configuration
+  # S3 access logs configuration
   dynamic "access_logs" {
     for_each = var.access_logs.enabled ? [1] : []
     content {
@@ -141,7 +141,7 @@ resource "aws_lb" "main" {
     }
   }
 
-  # Enhanced access logs configuration
+  # Legacy access logs configuration for backward compatibility
   dynamic "access_logs" {
     for_each = var.access_logs_enabled ? [1] : []
     content {
@@ -156,7 +156,7 @@ resource "aws_lb" "main" {
   depends_on = [aws_cloudwatch_log_group.lb_logs]
 }
 
-# Target Groups
+# Target groups for routing traffic to backend services
 resource "aws_lb_target_group" "main" {
   for_each = { for tg in var.target_groups : tg.name => tg }
 
@@ -166,7 +166,7 @@ resource "aws_lb_target_group" "main" {
   target_type = each.value.target_type
   vpc_id      = each.value.vpc_id
 
-  # Enhanced target group attributes
+  # Advanced target group settings
   lambda_multi_value_headers_enabled = var.target_group_lambda_multi_value_headers_enabled
   proxy_protocol_v2                  = var.target_group_proxy_protocol_v2
   load_balancing_algorithm_type      = var.target_group_load_balancing_algorithm_type
@@ -184,7 +184,7 @@ resource "aws_lb_target_group" "main" {
     unhealthy_threshold = each.value.unhealthy_threshold
   }
 
-  # Enhanced stickiness configuration
+  # Session stickiness configuration
   dynamic "stickiness" {
     for_each = each.value.stickiness != null ? [each.value.stickiness] : []
     content {
@@ -195,7 +195,7 @@ resource "aws_lb_target_group" "main" {
     }
   }
 
-  # Global stickiness configuration
+  # Global stickiness settings when not specified per target group
   dynamic "stickiness" {
     for_each = var.target_group_stickiness_enabled && each.value.stickiness == null ? [1] : []
     content {
@@ -217,7 +217,7 @@ resource "aws_lb_target_group" "main" {
   }
 }
 
-# Listeners
+# Listeners for handling incoming traffic
 resource "aws_lb_listener" "main" {
   for_each = { for listener in var.listeners : "${listener.port}-${listener.protocol}" => listener }
 
@@ -227,10 +227,10 @@ resource "aws_lb_listener" "main" {
   ssl_policy        = each.value.ssl_policy
   certificate_arn   = each.value.certificate_arn
 
-  # Enhanced listener attributes
+  # Application layer protocol negotiation
   alpn_policy = var.listener_alpn_policy != "" ? [var.listener_alpn_policy] : null
 
-  # Mutual authentication configuration
+  # Client certificate authentication
   dynamic "mutual_authentication" {
     for_each = var.listener_mutual_authentication.mode != "off" ? [var.listener_mutual_authentication] : []
     content {
@@ -240,7 +240,7 @@ resource "aws_lb_listener" "main" {
     }
   }
 
-  # Default action
+  # Default action for unmatched requests
   dynamic "default_action" {
     for_each = [each.value.default_action]
     content {
@@ -276,7 +276,7 @@ resource "aws_lb_listener" "main" {
   tags = merge(local.enhanced_tags, var.listener_tags)
 }
 
-# Listener Rules
+# Routing rules for listeners
 resource "aws_lb_listener_rule" "main" {
   for_each = {
     for rule in flatten([
@@ -350,7 +350,7 @@ resource "aws_lb_listener_rule" "main" {
   tags = local.common_tags
 }
 
-# WAF Web ACL Association (if provided)
+# WAF Web ACL association for additional security
 resource "aws_wafv2_web_acl_association" "lb" {
   count        = var.waf_web_acl_arn != "" ? 1 : 0
   resource_arn = aws_lb.main.arn
@@ -359,7 +359,7 @@ resource "aws_wafv2_web_acl_association" "lb" {
   depends_on = [aws_lb.main]
 }
 
-# CloudWatch Alarms for Load Balancer Health
+# CloudWatch alarms for monitoring load balancer health
 resource "aws_cloudwatch_metric_alarm" "lb_healthy_hosts" {
   count               = var.enable_cloudwatch_alarms ? 1 : 0
   alarm_name          = "${var.name}-healthy-hosts"
@@ -432,7 +432,7 @@ resource "aws_cloudwatch_metric_alarm" "lb_target_response_time" {
   tags = merge(local.enhanced_tags, var.cloudwatch_alarm_tags)
 }
 
-# Custom CloudWatch Alarms
+# Custom CloudWatch alarms for specific monitoring needs
 resource "aws_cloudwatch_metric_alarm" "custom" {
   for_each = var.custom_cloudwatch_alarms
 
